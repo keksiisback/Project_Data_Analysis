@@ -1,0 +1,6 @@
+name: Projekt_Data_Analysis
+dependencies:
+  - spacy
+  - pandas
+  - scikit-learn
+  - python

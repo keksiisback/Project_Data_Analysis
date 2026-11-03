@@ -4,7 +4,8 @@ import spacy # Hier wird die Bibliothek spaCy importiert.
 nlp = spacy.load("en_core_web_sm")  # Englisches Sprachmodell laden
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
-
+from sklearn.decomposition import TruncatedSVD # Importiert die Singulärwertzerlegung für die LSA.
+from sklearn.decomposition import LatentDirichletAllocation # Importiert die Latent Dirichlet Allocation für die LDA.
 
 ### Daten einlesen
 dateipfad = r"C:\Users\mbbor\OneDrive\Dokumente\IU Universität\Projekt Data Analysis\GitRepository\electronic products.csv" # Pfad zur CSV-Datei
@@ -134,3 +135,52 @@ vergleich = vergleich[vergleich["BoW"] > 0] # Nur Wörter anzeigen, die in der e
 vergleich = vergleich.sort_values(by="TF-IDF", ascending=False) # Die Wörter werden nach ihren TF-IDF-Werten in absteigender Reihenfolge sortiert, um die Wörter mit den höchsten TF-IDF-Werten zuerst anzuzeigen.
 
 print(vergleich.to_string(index=False)) # Der DataFrame "vergleich" wird ausgegeben, wobei die Indexspalte nicht angezeigt wird, um die Wörter, ihre Häufigkeiten in der ersten Bewertung (BoW) und ihre TF-IDF-Werte zu vergleichen.
+
+
+### Latent Semantic Analysis (LSA)
+LSA_model = TruncatedSVD(n_components=20, algorithm='randomized', n_iter=10, random_state=42) # LSA-Modell mit 20 Komponenten erstellen.
+
+lsa_matrix = LSA_model.fit_transform(tfidf_matrix) # Die TF-IDF-Matrix wird durch das LSA-Modell transformiert.
+
+print("Dimensionen der LSA-Matrix:", lsa_matrix.shape) # Dimensionen der neuen Matrix ausgeben.
+
+print("Gesamte erklärte Varianz:", round(LSA_model.explained_variance_ratio_.sum() * 100, 2), "%") # Erklärte Varianz aller Komponenten ausgeben.
+
+# Die zehn wichtigsten Wörter je LSA-Komponente anzeigen
+begriffe = tfidf_vectorizer.get_feature_names_out() # Die Begriffe (Wörter) aus dem TF-IDF-Vokabular werden extrahiert, um die wichtigsten Wörter jeder LSA-Komponente zu identifizieren.
+
+for i, komponente in enumerate(LSA_model.components_): # Jede LSA-Komponente wird durchlaufen, wobei der Index der Komponente und die Werte der Komponente zurückgegeben werden.
+    top_woerter = komponente.argsort()[-10:][::-1] # Die Indizes der 10 wichtigsten Wörter jeder LSA-Komponente werden ermittelt, indem die Werte der Komponente sortiert und die letzten 10 Indizes ausgewählt werden. Diese Indizes werden dann in umgekehrter Reihenfolge zurückgegeben, um die wichtigsten Wörter zuerst anzuzeigen.
+
+    print(f"\nThema {i + 1}:") # Die Nummer des Themas (LSA-Komponente) wird ausgegeben.
+    print(", ".join(begriffe[top_woerter])) # Die 10 wichtigsten Wörter jeder LSA-Komponente werden ausgegeben, indem die Begriffe (Wörter) aus dem TF-IDF-Vokabular anhand der Indizes der wichtigsten Wörter ausgewählt und durch Kommas getrennt angezeigt werden.
+
+haeufigste_komponenten = lsa_matrix.argmax(axis=1) # Die jeweils stärkste LSA-Komponente jeder Bewertung wird ermittelt, indem die Indizes der Komponenten mit den höchsten Werten in der LSA-Matrix für jede Bewertung zurückgegeben werden.
+
+komponenten_anzahl = pd.Series(haeufigste_komponenten).value_counts().reindex(range(20), fill_value=0).sort_index() # Die Anzahl der Bewertungen je LSA-Komponente wird gezählt, indem die Häufigkeit der Indizes der stärksten Komponenten gezählt und in einer Serie gespeichert wird. Die Serie wird so angepasst, dass alle 20 Komponenten berücksichtigt werden, auch wenn einige Komponenten keine Bewertungen haben, und die Serie wird nach den Indizes der Komponenten sortiert.
+
+for komponente, anzahl in komponenten_anzahl.items(): # Die Anzahl und der prozentuale Anteil der Bewertungen je LSA-Komponente werden ausgegeben, indem die Anzahl der Bewertungen jeder Komponente durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird, um den prozentualen Anteil zu berechnen.
+    prozent = anzahl / len(reviews) * 100 # Der prozentuale Anteil der Bewertungen jeder LSA-Komponente wird berechnet, indem die Anzahl der Bewertungen jeder Komponente durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird.
+    print(f"Thema {komponente + 1}: {anzahl} Bewertungen ({prozent:.2f} %)") # Die Anzahl und der prozentuale Anteil der Bewertungen jeder LSA-Komponente werden ausgegeben, wobei die Komponentennummer um 1 erhöht wird, um die Ausgabe benutzerfreundlicher zu gestalten.
+
+### Latent Dirichlet Allocation (LDA)
+LDA_model = LatentDirichletAllocation(n_components=20, random_state=42) # LDA-Modell mit 20 Komponenten erstellen.
+lda_matrix = LDA_model.fit_transform(bow_matrix) # Die BoW-Matrix wird durch das LDA-Modell transformiert.
+print("Dimensionen der LDA-Matrix:", lda_matrix.shape) # Dimensionen der neuen Matrix ausgeben.
+
+# Die zehn wichtigsten Wörter je LDA-Thema anzeigen
+begriffe = vectorizer.get_feature_names_out() # Die Begriffe (Wörter) aus dem BoW-Vokabular werden extrahiert, um die wichtigsten Wörter jedes LDA-Themas zu identifizieren.
+
+for i, thema in enumerate(LDA_model.components_): # Jedes LDA-Thema wird durchlaufen, wobei der Index des Themas und die Werte des Themas zurückgegeben werden.
+    top_woerter = thema.argsort()[-10:][::-1] # Die Indizes der 10 wichtigsten Wörter jedes LDA-Themas werden ermittelt, indem die Werte des Themas sortiert und die letzten 10 Indizes ausgewählt werden. Diese Indizes werden dann in umgekehrter Reihenfolge zurückgegeben, um die wichtigsten Wörter zuerst anzuzeigen.
+
+    print(f"\nThema {i + 1}:") # Die Nummer des Themas (LDA-Thema) wird ausgegeben.
+    print(", ".join(begriffe[top_woerter])) # Die 10 wichtigsten Wörter jedes LDA-Themas werden ausgegeben, indem die Begriffe (Wörter) aus dem BoW-Vokabular anhand der Indizes der wichtigsten Wörter ausgewählt und durch Kommas getrennt angezeigt werden.
+
+haeufigste_themen = lda_matrix.argmax(axis=1) # Die jeweils wahrscheinlichste LDA-Komponente jeder Bewertung wird ermittelt, indem die Indizes der Komponenten mit den höchsten Werten in der LDA-Matrix für jede Bewertung zurückgegeben werden.
+
+themen_anzahl = pd.Series(haeufigste_themen).value_counts().reindex(range(20), fill_value=0).sort_index() # Die Anzahl der Bewertungen je LDA-Thema wird gezählt, indem die Häufigkeit der Indizes der wahrscheinlichsten Themen gezählt und in einer Serie gespeichert wird. Die Serie wird so angepasst, dass alle 20 Themen berücksichtigt werden, auch wenn einige Themen keine Bewertungen haben, und die Serie wird nach den Indizes der Themen sortiert.
+
+for thema, anzahl in themen_anzahl.items(): # Die Anzahl und der prozentuale Anteil der Bewertungen je LDA-Thema werden ausgegeben, indem die Anzahl der Bewertungen jedes Themas durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird, um den prozentualen Anteil zu berechnen.
+    prozent = anzahl / len(reviews) * 100 # Der prozentuale Anteil der Bewertungen jedes LDA-Themas wird berechnet, indem die Anzahl der Bewertungen jedes Themas durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird.
+    print(f"Thema {thema + 1}: {anzahl} Bewertungen ({prozent:.2f} %)") # Die Anzahl und der prozentuale Anteil der Bewertungen jedes LDA-Themas werden ausgegeben, wobei die Themennummer um 1 erhöht wird, um die Ausgabe benutzerfreundlicher zu gestalten.

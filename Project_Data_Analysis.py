@@ -184,3 +184,4 @@ themen_anzahl = pd.Series(haeufigste_themen).value_counts().reindex(range(20), f
 for thema, anzahl in themen_anzahl.items(): # Die Anzahl und der prozentuale Anteil der Bewertungen je LDA-Thema werden ausgegeben, indem die Anzahl der Bewertungen jedes Themas durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird, um den prozentualen Anteil zu berechnen.
     prozent = anzahl / len(reviews) * 100 # Der prozentuale Anteil der Bewertungen jedes LDA-Themas wird berechnet, indem die Anzahl der Bewertungen jedes Themas durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird.
     print(f"Thema {thema + 1}: {anzahl} Bewertungen ({prozent:.2f} %)") # Die Anzahl und der prozentuale Anteil der Bewertungen jedes LDA-Themas werden ausgegeben, wobei die Themennummer um 1 erhöht wird, um die Ausgabe benutzerfreundlicher zu gestalten.
+    

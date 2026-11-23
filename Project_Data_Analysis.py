@@ -7,181 +7,179 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD # Importiert die Singulärwertzerlegung für die LSA.
 from sklearn.decomposition import LatentDirichletAllocation # Importiert die Latent Dirichlet Allocation für die LDA.
 
-### Daten einlesen
+### CSV-Datei einlesen, Kundenbewertungen prüfen, fehlende Werte entfernen und Bewertungen für die weitere Analyse speichern.
 dateipfad = r"C:\Users\mbbor\OneDrive\Dokumente\IU Universität\Projekt Data Analysis\GitRepository\electronic products.csv" # Pfad zur CSV-Datei
 
-df = pd.read_csv(dateipfad) # DataFrame aus CSV-Datei erstellen df=Dataframe
+df = pd.read_csv(dateipfad) 
 
-print(df.head()) # Die ersten fünf Zeilen des DataFrames werden ausgegeben, um einen Überblick über die Daten zu erhalten.
+print(df.head()) 
 
-print(df["reviews.text"].head()) # Die ersten fünf Einträge der Spalte "reviews.text" werden ausgegeben, um einen Einblick in die Kundenbewertungen zu erhalten.
+print(df["reviews.text"].head()) 
 
-print(df["reviews.text"].isna().sum()) # Die Anzahl der fehlenden Werte in der Spalte "reviews.text" wird ausgegeben, um zu sehen, wie viele Bewertungen fehlen.
-# Festgestellt, dass es 1 fehlenden Wert in der Spalte "reviews.text" gibt.
+print(df["reviews.text"].isna().sum())
 
-df = df.dropna(subset=["reviews.text"]) # Alle Zeilen, die fehlende Werte in der Spalte "reviews.text" enthalten, werden aus dem DataFrame entfernt.
-# Diese Zeile wo der Wert fehlt ist entfernt.
+df = df.dropna(subset=["reviews.text"])
 
-reviews = df["reviews.text"] # Die Spalte "reviews.text" wird in eine neue Variable namens "reviews" gespeichert, um die Kundenbewertungen zu analysieren.
+reviews = df["reviews.text"]
 
 
-### Vorverarbeitung der Kundenbewertungen
-print(reviews.iloc[0]) # Die erste Kundenbewertung wird ausgegeben, um einen Einblick in den Inhalt der Bewertungen zu erhalten.
+### Kundenbewertungen zur Vereinheitlichung in Kleinbuchstaben umwandeln und das Ergebnis überprüfen.
+print(reviews.iloc[0])
 
-reviews = reviews.str.lower() # Alle Kundenbewertungen werden in Kleinbuchstaben umgewandelt.
+reviews = reviews.str.lower()
 
-print(reviews.iloc[0]) # Prüfen ob alles kleine geschrieben wurde.
-
-
-### Links entfernen
-def link_entfernen(text): # Diese Funktion entfernt alle Links aus dem gegebenen Text.
-    return re.sub(r"https?://\S+|www\.\S+", "", text) # Die Funktion verwendet reguläre Ausdrücke, um Muster zu finden, die mit "http://" oder "https://" beginnen, gefolgt von beliebigen Zeichen, und ersetzt diese durch einen leeren String, wodurch die Links entfernt werden.
-
-reviews = reviews.apply(link_entfernen) # Alle Kundenbewertungen werden durch die Funktion "link_entfernen" verarbeitet, um alle Links aus den Bewertungen zu entfernen.
+print(reviews.iloc[0])
 
 
-### Satzzeichen entfernen
-def satzzeichen_entfernen(text): # Diese Funktion entfernt alle Satzzeichen aus dem gegebenen Text.
-    return re.sub(r"[^\w\s]", "", text) # Die Funktion verwendet reguläre Ausdrücke, um alle Zeichen zu finden, die keine Buchstaben, Zahlen oder Leerzeichen sind, und ersetzt diese durch einen leeren String, wodurch die Satzzeichen entfernt werden.
+### Funktion zur Entfernung von URLs aus den Kundenbewertungen, um störende Links aus dem Text zu entfernen.
+def link_entfernen(text):
+    return re.sub(r"https?://\S+|www\.\S+", "", text)
 
-reviews = reviews.apply(satzzeichen_entfernen) # Alle Kundenbewertungen werden durch die Funktion "satzzeichen_entfernen" verarbeitet, um alle Satzzeichen aus den Bewertungen zu entfernen.
-
-print(reviews.iloc[0]) # Die erste Kundenbewertung wird erneut ausgegeben, um zu überprüfen, ob die Links und Satzzeichen erfolgreich entfernt wurden.
+reviews = reviews.apply(link_entfernen)
 
 
-### Lemmatisierung der Kundenbewertungen
-def lemmatisieren(reviews): # Diese Funktion lemmatisiert alle Kundenbewertungen, indem sie die Grundformen der Wörter extrahiert.
-    lemmatisierte_reviews = []  # Liste für die lemmatisierten Bewertungen erstellen
+### Funktion zur Entfernung von Satzzeichen aus den Kundenbewertungen und anschließende Überprüfung der Textbereinigung.
+def satzzeichen_entfernen(text):
+    return re.sub(r"[^\w\s]", "", text)
 
-    for bewertung in nlp.pipe(reviews, batch_size=1000): # Die Bewertungen werden in Batches verarbeitet, um die Verarbeitung zu optimieren - diese Funktion nimmt etwas Zeit in Anspruch.
-        woerter = []  # Liste für die Wörter in der aktuellen Bewertung erstellen
+reviews = reviews.apply(satzzeichen_entfernen)
 
-        for token in bewertung: # Jedes Token (Wort) in der aktuellen Bewertung wird durchlaufen
-            woerter.append(token.lemma_)  # Das Lemmatisieren wird durchgeführt, indem die Grundform jedes Tokens extrahiert und in der Liste "woerter" gespeichert wird.
-
-        lemmatisierter_text = " ".join(woerter)  # Die lemmatisierten Wörter werden zu einem Text zusammengefügt, indem sie durch Leerzeichen getrennt werden.
-
-        lemmatisierte_reviews.append(lemmatisierter_text)  # Die lemmatisierte Bewertung wird der Liste "lemmatisierte_reviews" hinzugefügt.
-
-    return lemmatisierte_reviews # Die Funktion gibt die Liste der lemmatisierten Bewertungen zurück.
-
-reviews = lemmatisieren(reviews)  # Die Funktion "lemmatisieren" wird auf die Kundenbewertungen angewendet, um die Grundformen der Wörter in den Bewertungen zu extrahieren.
-
-print(reviews[0])  # Die erste lemmatisierte Kundenbewertung wird ausgegeben, um zu überprüfen, ob die Lemmatisierung erfolgreich durchgeführt wurde.
+print(reviews.iloc[0])
 
 
-### Erstellen von BoW 
-from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS # Die Liste der englischen Stoppwörter wird aus der Bibliothek sklearn importiert, um häufig vorkommende Wörter zu identifizieren, die in der Textanalyse möglicherweise nicht relevant sind.
+### Fnktion zur Lemmatisierung der Kundenbewertungen, bei der Wörter auf ihre Grundform zurückgeführt und die Ergebnisse überprüft werden.
+def lemmatisieren(reviews):
+    lemmatisierte_reviews = []
 
-stop_words = ENGLISH_STOP_WORDS - {"not", "no"} # Die Stoppwörter "not" und "no" werden aus der Liste der englischen Stoppwörter entfernt, da sie in der Sentiment-Analyse wichtig sein können, um die Bedeutung von negativen Bewertungen zu erfassen.
+    for bewertung in nlp.pipe(reviews, batch_size=1000):
+        woerter = []
 
-vectorizer = CountVectorizer(stop_words=list(stop_words)) # Ein CountVectorizer-Objekt wird erstellt, das die Stoppwörter verwendet, um die Kundenbewertungen in eine Bag-of-Words-Darstellung umzuwandeln. Die Stoppwörter werden aus der Liste der englischen Stoppwörter entfernt, um die Bedeutung von negativen Bewertungen zu erfassen.
+        for token in bewertung:
+            woerter.append(token.lemma_)
 
-bow_matrix = vectorizer.fit_transform(reviews) # Die Kundenbewertungen werden in eine Wort-Häufigkeitsmatrix umgewandelt.
+        lemmatisierter_text = " ".join(woerter)
 
-vocabulary = vectorizer.get_feature_names_out() # Das Vokabular (die einzigartigen Wörter) wird aus dem CountVectorizer-Objekt extrahiert.
+        lemmatisierte_reviews.append(lemmatisierter_text)
 
+    return lemmatisierte_reviews
 
-### Ausgaben von Vokabular und BoW-Matrix
-print("Anzahl der Wörter im Vokabular:", len(vocabulary)) # Die Anzahl der einzigartigen Wörter im Vokabular wird ausgegeben.
+reviews = lemmatisieren(reviews)
 
-print("Dimensionen der BoW-Matrix:", bow_matrix.shape) # Die Dimensionen der BoW-Matrix werden ausgegeben.
-
-
-### Ausgabe der Wort-Häufigkeiten der ersten Bewertung
-wort_haeufigkeiten = bow_matrix[0].toarray()[0] # Die Wort-Häufigkeiten der ersten Bewertung werden in ein Array umgewandelt, um die Häufigkeit jedes Wortes in der ersten Bewertung zu analysieren.
-for index, anzahl in enumerate(wort_haeufigkeiten): # Die Häufigkeit jedes Wortes in der ersten Bewertung wird durchlaufen, wobei der Index des Wortes und die Häufigkeit des Wortes in der ersten Bewertung zurückgegeben werden.
-    if anzahl > 0: # wenn die Häufigkeit eines Wortes größer als 0 ist, wird das Wort und seine Häufigkeit ausgegeben.
-        print(vocabulary[index], anzahl) # Das Wort und seine Häufigkeit werden ausgegeben.
+print(reviews[0])
 
 
-### Gesamthäufigkeit der Wörter in allen Bewertungen
-wort_gesamt = bow_matrix.sum(axis=0).A1 # Die Gesamthäufigkeit jedes Wortes in allen Bewertungen wird berechnet.
+### Erstellung einer Bag-of-Words-Matrix zur Darstellung der Worthäufigkeiten. Dabei werden englische Stoppwörter entfernt, außer „not“ und „no“, um wichtige Negationen zu erhalten.
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 
-haeufigste_indizes = wort_gesamt.argsort()[-10:][::-1] # Die Indizes der 10 häufigsten Wörter werden ermittelt, indem die Gesamthäufigkeiten der Wörter sortiert und die letzten 10 Indizes ausgewählt werden. Diese Indizes werden dann in umgekehrter Reihenfolge zurückgegeben, um die häufigsten Wörter zuerst anzuzeigen.
+stop_words = ENGLISH_STOP_WORDS - {"not", "no"}
 
-for index in haeufigste_indizes: # Die 10 häufigsten Wörter werden durchlaufen, wobei der Index des Wortes zurückgegeben wird.
-    print(vocabulary[index], wort_gesamt[index]) # Das häufigste Wort und seine Gesamthäufigkeit werden ausgegeben.
+vectorizer = CountVectorizer(stop_words=list(stop_words))
 
+bow_matrix = vectorizer.fit_transform(reviews)
 
-### Ab jetzt erstellen wir die TF-IDF-Matrix.
-tfidf_vectorizer = TfidfVectorizer(min_df=1, stop_words=list(stop_words)) # Ein TfidfVectorizer-Objekt wird erstellt, das die Stoppwörter verwendet, um die Kundenbewertungen in eine TF-IDF-Darstellung umzuwandeln. Die Stoppwörter werden aus der Liste der englischen Stoppwörter entfernt, um die Bedeutung von negativen Bewertungen zu erfassen.
-
-tfidf_matrix = tfidf_vectorizer.fit_transform(reviews) # Die Kundenbewertungen werden in eine TF-IDF-Matrix umgewandelt, die die Wichtigkeit jedes Wortes in den Bewertungen basierend auf seiner Häufigkeit und der Anzahl der Bewertungen, in denen es vorkommt, darstellt.
-
-tfidf_vocabulary = tfidf_vectorizer.get_feature_names_out() # Das Vokabular (die einzigartigen Wörter) wird aus dem TfidfVectorizer-Objekt extrahiert.
-
-print("Dimensionen der TF-IDF-Matrix:", tfidf_matrix.shape) # Die Dimensionen der TF-IDF-Matrix werden ausgegeben, um die Anzahl der Bewertungen und die Anzahl der einzigartigen Wörter in der TF-IDF-Darstellung zu überprüfen.
+vocabulary = vectorizer.get_feature_names_out()
 
 
-### Ausgabe der TF-IDF-Werte der ersten Bewertung
-tfidf_werte = tfidf_matrix[0].toarray()[0] # Die TF-IDF-Werte der ersten Bewertung werden in ein Array umgewandelt.
-sortierte_indizes = tfidf_werte.argsort()[::-1] # Die Indizes der Wörter werden nach ihren TF-IDF-Werten in absteigender Reihenfolge sortiert, um die Wörter mit den höchsten TF-IDF-Werten zuerst anzuzeigen.
+### Ausgabe der Größe des Vokabulars und der Dimensionen der BoW-Matrix zur Überprüfung der Ergebnisse.
+print("Anzahl der Wörter im Vokabular:", len(vocabulary))
 
-for index in sortierte_indizes[:10]: # Die 10 Wörter mit den höchsten TF-IDF-Werten werden durchlaufen, wobei der Index des Wortes zurückgegeben wird.
-    if tfidf_werte[index] > 0: # wenn der TF-IDF-Wert eines Wortes größer als 0 ist, wird das Wort und sein TF-IDF-Wert ausgegeben.
-        print(tfidf_vocabulary[index], round(tfidf_werte[index], 3)) # Das Wort und sein TF-IDF-Wert werden ausgegeben, wobei der TF-IDF-Wert auf drei Dezimalstellen gerundet wird.
+print("Dimensionen der BoW-Matrix:", bow_matrix.shape)
 
 
-### BoW- und TF-IDF-Werte der ersten Bewertung vergleichen
+### Ausgabe der Worthäufigkeiten der ersten Kundenbewertung zur Überprüfung der BoW-Darstellung.
+wort_haeufigkeiten = bow_matrix[0].toarray()[0]
+for index, anzahl in enumerate(wort_haeufigkeiten):
+    if anzahl > 0:
+        print(vocabulary[index], anzahl)
+
+
+### Ermittlung und Ausgabe der zehn häufigsten Wörter über alle Kundenbewertungen hinweg.
+wort_gesamt = bow_matrix.sum(axis=0).A1
+
+haeufigste_indizes = wort_gesamt.argsort()[-10:][::-1]
+
+for index in haeufigste_indizes:
+    print(vocabulary[index], wort_gesamt[index])
+
+
+### Erstellung einer TF-IDF-Matrix zur Gewichtung der Wörter nach ihrer Relevanz in den Kundenbewertungen und Ausgabe der Matrixdimensionen.
+tfidf_vectorizer = TfidfVectorizer(min_df=1, stop_words=list(stop_words))
+
+tfidf_matrix = tfidf_vectorizer.fit_transform(reviews)
+
+tfidf_vocabulary = tfidf_vectorizer.get_feature_names_out()
+
+print("Dimensionen der TF-IDF-Matrix:", tfidf_matrix.shape)
+
+
+### Ausgabe der zehn Wörter mit den höchsten TF-IDF-Werten der ersten Kundenbewertung.
+tfidf_werte = tfidf_matrix[0].toarray()[0]
+sortierte_indizes = tfidf_werte.argsort()[::-1]
+
+for index in sortierte_indizes[:10]:
+    if tfidf_werte[index] > 0:
+        print(tfidf_vocabulary[index], round(tfidf_werte[index], 3))
+
+
+### Gegenüberstellung der BoW-Häufigkeiten und TF-IDF-Gewichtungen aller Wörter der ersten Kundenbewertung.
 vergleich = pd.DataFrame({
     "Wort": vocabulary,
     "BoW": bow_matrix[0].toarray()[0],
     "TF-IDF": tfidf_matrix[0].toarray()[0]
-}) # Ein DataFrame namens "vergleich" wird erstellt, der die Wörter, ihre Häufigkeiten in der ersten Bewertung (BoW) und ihre TF-IDF-Werte enthält.
+})
 
-vergleich = vergleich[vergleich["BoW"] > 0] # Nur Wörter anzeigen, die in der ersten Bewertung vorkommen
+vergleich = vergleich[vergleich["BoW"] > 0]
 
-vergleich = vergleich.sort_values(by="TF-IDF", ascending=False) # Die Wörter werden nach ihren TF-IDF-Werten in absteigender Reihenfolge sortiert, um die Wörter mit den höchsten TF-IDF-Werten zuerst anzuzeigen.
+vergleich = vergleich.sort_values(by="TF-IDF", ascending=False)
 
-print(vergleich.to_string(index=False)) # Der DataFrame "vergleich" wird ausgegeben, wobei die Indexspalte nicht angezeigt wird, um die Wörter, ihre Häufigkeiten in der ersten Bewertung (BoW) und ihre TF-IDF-Werte zu vergleichen.
+print(vergleich.to_string(index=False))
 
 
-### Latent Semantic Analysis (LSA)
+### Durchführung der Latent Semantic Analysis (LSA) zur Reduzierung der TF-IDF-Matrix auf 20 Komponenten. Anschließend werden die wichtigsten Begriffe, die erklärte Varianz und die Verteilung der Bewertungen auf die Komponenten untersucht.
 LSA_model = TruncatedSVD(n_components=20, algorithm='randomized', n_iter=10, random_state=42) # LSA-Modell mit 20 Komponenten erstellen.
 
-lsa_matrix = LSA_model.fit_transform(tfidf_matrix) # Die TF-IDF-Matrix wird durch das LSA-Modell transformiert.
+lsa_matrix = LSA_model.fit_transform(tfidf_matrix)
 
-print("Dimensionen der LSA-Matrix:", lsa_matrix.shape) # Dimensionen der neuen Matrix ausgeben.
+print("Dimensionen der LSA-Matrix:", lsa_matrix.shape)
 
-print("Gesamte erklärte Varianz:", round(LSA_model.explained_variance_ratio_.sum() * 100, 2), "%") # Erklärte Varianz aller Komponenten ausgeben.
+print("Gesamte erklärte Varianz:", round(LSA_model.explained_variance_ratio_.sum() * 100, 2), "%")
 
-# Die zehn wichtigsten Wörter je LSA-Komponente anzeigen
-begriffe = tfidf_vectorizer.get_feature_names_out() # Die Begriffe (Wörter) aus dem TF-IDF-Vokabular werden extrahiert, um die wichtigsten Wörter jeder LSA-Komponente zu identifizieren.
 
-for i, komponente in enumerate(LSA_model.components_): # Jede LSA-Komponente wird durchlaufen, wobei der Index der Komponente und die Werte der Komponente zurückgegeben werden.
-    top_woerter = komponente.argsort()[-10:][::-1] # Die Indizes der 10 wichtigsten Wörter jeder LSA-Komponente werden ermittelt, indem die Werte der Komponente sortiert und die letzten 10 Indizes ausgewählt werden. Diese Indizes werden dann in umgekehrter Reihenfolge zurückgegeben, um die wichtigsten Wörter zuerst anzuzeigen.
+begriffe = tfidf_vectorizer.get_feature_names_out()
 
-    print(f"\nThema {i + 1}:") # Die Nummer des Themas (LSA-Komponente) wird ausgegeben.
-    print(", ".join(begriffe[top_woerter])) # Die 10 wichtigsten Wörter jeder LSA-Komponente werden ausgegeben, indem die Begriffe (Wörter) aus dem TF-IDF-Vokabular anhand der Indizes der wichtigsten Wörter ausgewählt und durch Kommas getrennt angezeigt werden.
+for i, komponente in enumerate(LSA_model.components_):
+    top_woerter = komponente.argsort()[-10:][::-1]
 
-haeufigste_komponenten = lsa_matrix.argmax(axis=1) # Die jeweils stärkste LSA-Komponente jeder Bewertung wird ermittelt, indem die Indizes der Komponenten mit den höchsten Werten in der LSA-Matrix für jede Bewertung zurückgegeben werden.
+    print(f"\nThema {i + 1}:")
+    print(", ".join(begriffe[top_woerter]))
 
-komponenten_anzahl = pd.Series(haeufigste_komponenten).value_counts().reindex(range(20), fill_value=0).sort_index() # Die Anzahl der Bewertungen je LSA-Komponente wird gezählt, indem die Häufigkeit der Indizes der stärksten Komponenten gezählt und in einer Serie gespeichert wird. Die Serie wird so angepasst, dass alle 20 Komponenten berücksichtigt werden, auch wenn einige Komponenten keine Bewertungen haben, und die Serie wird nach den Indizes der Komponenten sortiert.
+haeufigste_komponenten = lsa_matrix.argmax(axis=1)
 
-for komponente, anzahl in komponenten_anzahl.items(): # Die Anzahl und der prozentuale Anteil der Bewertungen je LSA-Komponente werden ausgegeben, indem die Anzahl der Bewertungen jeder Komponente durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird, um den prozentualen Anteil zu berechnen.
-    prozent = anzahl / len(reviews) * 100 # Der prozentuale Anteil der Bewertungen jeder LSA-Komponente wird berechnet, indem die Anzahl der Bewertungen jeder Komponente durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird.
-    print(f"Thema {komponente + 1}: {anzahl} Bewertungen ({prozent:.2f} %)") # Die Anzahl und der prozentuale Anteil der Bewertungen jeder LSA-Komponente werden ausgegeben, wobei die Komponentennummer um 1 erhöht wird, um die Ausgabe benutzerfreundlicher zu gestalten.
+komponenten_anzahl = pd.Series(haeufigste_komponenten).value_counts().reindex(range(20), fill_value=0).sort_index() 
 
-### Latent Dirichlet Allocation (LDA)
-LDA_model = LatentDirichletAllocation(n_components=20, random_state=42) # LDA-Modell mit 20 Komponenten erstellen.
-lda_matrix = LDA_model.fit_transform(bow_matrix) # Die BoW-Matrix wird durch das LDA-Modell transformiert.
-print("Dimensionen der LDA-Matrix:", lda_matrix.shape) # Dimensionen der neuen Matrix ausgeben.
+for komponente, anzahl in komponenten_anzahl.items():
+    prozent = anzahl / len(reviews) * 100
+    print(f"Thema {komponente + 1}: {anzahl} Bewertungen ({prozent:.2f} %)")
 
-# Die zehn wichtigsten Wörter je LDA-Thema anzeigen
-begriffe = vectorizer.get_feature_names_out() # Die Begriffe (Wörter) aus dem BoW-Vokabular werden extrahiert, um die wichtigsten Wörter jedes LDA-Themas zu identifizieren.
 
-for i, thema in enumerate(LDA_model.components_): # Jedes LDA-Thema wird durchlaufen, wobei der Index des Themas und die Werte des Themas zurückgegeben werden.
-    top_woerter = thema.argsort()[-10:][::-1] # Die Indizes der 10 wichtigsten Wörter jedes LDA-Themas werden ermittelt, indem die Werte des Themas sortiert und die letzten 10 Indizes ausgewählt werden. Diese Indizes werden dann in umgekehrter Reihenfolge zurückgegeben, um die wichtigsten Wörter zuerst anzuzeigen.
+### Durchführung der Latent Dirichlet Allocation (LDA) zur Identifikation von 20 Themen auf Basis der BoW-Matrix. Anschließend werden die wichtigsten Begriffe und die Verteilung der Bewertungen auf die Themen untersucht.
+LDA_model = LatentDirichletAllocation(n_components=20, random_state=42)
+lda_matrix = LDA_model.fit_transform(bow_matrix)
+print("Dimensionen der LDA-Matrix:", lda_matrix.shape)
 
-    print(f"\nThema {i + 1}:") # Die Nummer des Themas (LDA-Thema) wird ausgegeben.
-    print(", ".join(begriffe[top_woerter])) # Die 10 wichtigsten Wörter jedes LDA-Themas werden ausgegeben, indem die Begriffe (Wörter) aus dem BoW-Vokabular anhand der Indizes der wichtigsten Wörter ausgewählt und durch Kommas getrennt angezeigt werden.
 
-haeufigste_themen = lda_matrix.argmax(axis=1) # Die jeweils wahrscheinlichste LDA-Komponente jeder Bewertung wird ermittelt, indem die Indizes der Komponenten mit den höchsten Werten in der LDA-Matrix für jede Bewertung zurückgegeben werden.
+begriffe = vectorizer.get_feature_names_out()
 
-themen_anzahl = pd.Series(haeufigste_themen).value_counts().reindex(range(20), fill_value=0).sort_index() # Die Anzahl der Bewertungen je LDA-Thema wird gezählt, indem die Häufigkeit der Indizes der wahrscheinlichsten Themen gezählt und in einer Serie gespeichert wird. Die Serie wird so angepasst, dass alle 20 Themen berücksichtigt werden, auch wenn einige Themen keine Bewertungen haben, und die Serie wird nach den Indizes der Themen sortiert.
+for i, thema in enumerate(LDA_model.components_):
+    top_woerter = thema.argsort()[-10:][::-1]
 
-for thema, anzahl in themen_anzahl.items(): # Die Anzahl und der prozentuale Anteil der Bewertungen je LDA-Thema werden ausgegeben, indem die Anzahl der Bewertungen jedes Themas durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird, um den prozentualen Anteil zu berechnen.
-    prozent = anzahl / len(reviews) * 100 # Der prozentuale Anteil der Bewertungen jedes LDA-Themas wird berechnet, indem die Anzahl der Bewertungen jedes Themas durch die Gesamtzahl der Bewertungen geteilt und mit 100 multipliziert wird.
-    print(f"Thema {thema + 1}: {anzahl} Bewertungen ({prozent:.2f} %)") # Die Anzahl und der prozentuale Anteil der Bewertungen jedes LDA-Themas werden ausgegeben, wobei die Themennummer um 1 erhöht wird, um die Ausgabe benutzerfreundlicher zu gestalten.
-    
+    print(f"\nThema {i + 1}:")
+    print(", ".join(begriffe[top_woerter])) 
+
+haeufigste_themen = lda_matrix.argmax(axis=1)
+
+themen_anzahl = pd.Series(haeufigste_themen).value_counts().reindex(range(20), fill_value=0).sort_index()
+
+for thema, anzahl in themen_anzahl.items():
+    prozent = anzahl / len(reviews) * 100 
+    print(f"Thema {thema + 1}: {anzahl} Bewertungen ({prozent:.2f} %)")
